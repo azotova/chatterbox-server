@@ -2,11 +2,11 @@
 <html>
 <head>
   <title>Mocha Spec Runner</title>
-  <link rel="stylesheet" href="lib/mocha/mocha.css">
-  <script src="lib/jquery.js"></script>
-  <script src="lib/mocha/mocha.js"></script>
-  <script src="lib/chai/chai.js"></script>
-  <script src="lib/sinon/sinon.js"></script>
+  <link rel="stylesheet" href="node_modules/mocha/mocha.css">
+  <script src="client/bower_components/jquery/jquery.js"></script>
+  <script src="node_modules/mocha/mocha.js"></script>
+  <script src="node_modules/chai/chai.js"></script>
+  <script src="node_modules/sinon/pkg/sinon.js"></script>
   <script>
     mocha.setup('bdd');
     var expect = chai.expect;
@@ -16,7 +16,7 @@
   </script>
 
   <!-- Spec files -->
-  <script src="spec/chatterboxSpec.js"></script>
+  <script src="client/spec/chatterboxSpec.js"></script>
 
   <!-- Source files -->
   <script src="client/scripts/app.js"></script>
