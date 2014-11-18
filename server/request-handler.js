@@ -11,6 +11,9 @@ this file and include it in basic-server.js so that it actually works.
 *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
 
 **************************************************************/
+var fs = require("fs");
+var path = require('path');
+
 var messages = [];
 
 var domains = {};
@@ -31,18 +34,43 @@ var requestHandler = function(request, response) {
   // Adding more logging to your server can be an easy way to get passive
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
-  console.log("request", request.url);
   var paths = request.url.split("/");
+  console.log("request", request.url, "paths", paths);
   var root = paths[1] || "classes";
-  if (root === "classes") {
+  var headers = defaultCorsHeaders;
+  if (request.url === '/') {
+    var statusCode = 302;
+    var redirectPath = 'http://localhost:3000/classes/chatterbox/index.html';
+    response.writeHead(statusCode, {'Location': redirectPath});
+    response.end();
+  } else if (paths[3] && paths[3].charAt(0)!=="?") {
+    var statusCode = 200;
+    var requPath = "../client/" + paths.slice(3).join("/");
+    // remove ?
+    if (requPath.indexOf('?') !== -1) {
+      requPath = requPath.substring(0, requPath.indexOf('?'));
+    }
+    console.log("requPath", requPath)
+    var filePath = path.join(__dirname, requPath);
+    var stat = fs.statSync(filePath);
+    fs.readFile(filePath, function(err, data) {
+      if (err) throw err;
+      var statusCode = 200;
+      console.log("Type", headers['Content-Type']);
+      console.log("path", requPath);
+      var ext = path.extname(request.url);
+      headers['Content-Type'] = validExtensions[ext];
+      headers['Content-Length'] = stat.size;
+      response.writeHead(statusCode, headers);
+      response.write(data);
+      response.end();
+    });
+  } else if (root === "classes") {
     var domain = paths[2] || "messages";
     if (!(domain in domains)) {
       domains[domain] = {results:[]};
     }
-    console.log("domains", domains);
-    console.log("method", request.method);
     var method = request.method;
-    var headers = defaultCorsHeaders;
     if (method === 'OPTIONS') {
       var statusCode = 200;
       headers['Content-Type'] = "text/plain";
@@ -51,39 +79,32 @@ var requestHandler = function(request, response) {
     } else if (method === 'GET') {
       var statusCode = 200;
       headers['Content-Type'] = "application/json";
+      // headers['Content-Length'] = stat.size;
       response.writeHead(statusCode, headers);
-      var responseContent =
-//      '{"results": ' +
-        JSON.stringify(domains[domain])
-  //  +    ',"username": "jon"}';
-      console.log("resCon", responseContent);
+      var responseContent = JSON.stringify(domains[domain])
       response.end(responseContent);
     } else if (method === 'POST') {
-        var body = '';
-        request.on('data', function (data) {
-          body += data;
+      var body = '';
+      request.on('data', function (data) {
+        body += data;
           // Too much POST data, kill the connection!
           if (body.length > 1e6) {
             request.connection.destroy();
           }
         });
-        console.log("POST data:", body);
-        request.on('end', function () {
-          var msgData = JSON.parse(body);
-          msgData.objectId = parseInt(nextObjectId++);
-          var timestamp = new Date().toISOString();
-          msgData.createdAt = msgData.updatedAt = timestamp;
-          domains[domain].results.push(msgData);
-          console.log("domAfterPush", domains);
+      request.on('end', function () {
+        var msgData = JSON.parse(body);
+        msgData.objectId = parseInt(nextObjectId++);
+        var timestamp = new Date().toISOString();
+        msgData.createdAt = msgData.updatedAt = timestamp;
+        domains[domain].results.push(msgData);
 
-          var statusCode = 201;
-          headers['Content-Type'] = "application/json";
-          response.writeHead(statusCode, headers);
-          response.end();
-        });
+        var statusCode = 201;
+        headers['Content-Type'] = "text/plain";
+        response.writeHead(statusCode, headers);
+        response.end();
+      });
     }
-  // } else if (request.url === '/classes/room1') {
-  //   if (request.method === 'GET') {
   } else {
     // The outgoing status.
     var statusCode = 404;
@@ -126,6 +147,16 @@ var defaultCorsHeaders = {
   "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
   "access-control-allow-headers": "content-type, accept",
   "access-control-max-age": 10 // Seconds.
+};
+
+var validExtensions = {
+  ".html" : "text/html",
+  ".js": "application/javascript",
+  ".css": "text/css",
+  ".txt": "text/plain",
+  ".jpg": "image/jpeg",
+  ".gif": "image/gif",
+  ".png": "image/png"
 };
 
 exports.requestHandler = requestHandler;
