@@ -5,7 +5,7 @@ $(function() {
   app = {
 //TODO: The current 'addFriend' function just adds the class 'friend'
 //to all messages sent by the user
-    server: 'https://api.parse.com/1/classes/chatterbox/',
+    server: 'http://localhost:3000/classes/chatterbox/',
     username: 'anonymous',
     roomname: 'lobby',
     lastMessageId: 0,
@@ -35,6 +35,7 @@ $(function() {
       setInterval(app.fetch, 3000);
     },
     send: function(data) {
+      console.log("sending", data);
       app.startSpinner();
       // Clear messages input
       app.$message.val('');

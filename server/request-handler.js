@@ -14,13 +14,8 @@ this file and include it in basic-server.js so that it actually works.
 var messages = [];
 
 var domains = {};
-/*
-  domains = {
-    messages: [],
-    room1: [{messageData}, {msg2}]
-  }
 
-*/
+var nextObjectId = 0;
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
   //
@@ -36,41 +31,56 @@ var requestHandler = function(request, response) {
   // Adding more logging to your server can be an easy way to get passive
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
+  console.log("request", request.url);
   var paths = request.url.split("/");
-  // ["", "classes", "messages"]
   var root = paths[1] || "classes";
   if (root === "classes") {
     var domain = paths[2] || "messages";
     if (!(domain in domains)) {
-      domains[domain] = [];
+      domains[domain] = {results:[]};
     }
-    if (request.method === 'GET') {
+    console.log("domains", domains);
+    console.log("method", request.method);
+    var method = request.method;
+    var headers = defaultCorsHeaders;
+    if (method === 'OPTIONS') {
       var statusCode = 200;
-      var headers = defaultCorsHeaders;
+      headers['Content-Type'] = "text/plain";
+      response.writeHead(statusCode, headers);
+      response.end();
+    } else if (method === 'GET') {
+      var statusCode = 200;
       headers['Content-Type'] = "application/json";
       response.writeHead(statusCode, headers);
-      var responseContent = '{"results": ' +
-        JSON.stringify(domains[domain]) +
-        ',"username": "jon"}';
+      var responseContent =
+//      '{"results": ' +
+        JSON.stringify(domains[domain])
+  //  +    ',"username": "jon"}';
+      console.log("resCon", responseContent);
       response.end(responseContent);
-    } else if (request.method === 'POST') {
+    } else if (method === 'POST') {
         var body = '';
         request.on('data', function (data) {
           body += data;
-
           // Too much POST data, kill the connection!
           if (body.length > 1e6) {
             request.connection.destroy();
           }
         });
+        console.log("POST data:", body);
         request.on('end', function () {
-          domains[domain].push(JSON.parse(body));
+          var msgData = JSON.parse(body);
+          msgData.objectId = parseInt(nextObjectId++);
+          var timestamp = new Date().toISOString();
+          msgData.createdAt = msgData.updatedAt = timestamp;
+          domains[domain].results.push(msgData);
+          console.log("domAfterPush", domains);
+
+          var statusCode = 201;
+          headers['Content-Type'] = "application/json";
+          response.writeHead(statusCode, headers);
+          response.end();
         });
-      var statusCode = 201;
-      var headers = defaultCorsHeaders;
-      headers['Content-Type'] = "application/json";
-      response.writeHead(statusCode, headers);
-      response.end();
     }
   // } else if (request.url === '/classes/room1') {
   //   if (request.method === 'GET') {
