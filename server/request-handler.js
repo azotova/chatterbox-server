@@ -12,6 +12,15 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 var messages = [];
+
+var domains = {};
+/*
+  domains = {
+    messages: [],
+    room1: [{messageData}, {msg2}]
+  }
+
+*/
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
   //
@@ -27,17 +36,23 @@ var requestHandler = function(request, response) {
   // Adding more logging to your server can be an easy way to get passive
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
-  console.log("Serving request type " + request.method + " for url " + request.url);
-  if (request.url === '/classes/messages') {
+  var paths = request.url.split("/");
+  // ["", "classes", "messages"]
+  var root = paths[1] || "classes";
+  if (root === "classes") {
+    var domain = paths[2] || "messages";
+    if (!(domain in domains)) {
+      domains[domain] = [];
+    }
     if (request.method === 'GET') {
       var statusCode = 200;
       var headers = defaultCorsHeaders;
       headers['Content-Type'] = "application/json";
       response.writeHead(statusCode, headers);
-      response.write(
-        '{"results": ' + JSON.stringify(messages) + ',"username": "jon"}'
-      );
-      response.end();
+      var responseContent = '{"results": ' +
+        JSON.stringify(domains[domain]) +
+        ',"username": "jon"}';
+      response.end(responseContent);
     } else if (request.method === 'POST') {
         var body = '';
         request.on('data', function (data) {
@@ -49,7 +64,7 @@ var requestHandler = function(request, response) {
           }
         });
         request.on('end', function () {
-          messages.push(JSON.parse(body));
+          domains[domain].push(JSON.parse(body));
         });
       var statusCode = 201;
       var headers = defaultCorsHeaders;
@@ -57,9 +72,9 @@ var requestHandler = function(request, response) {
       response.writeHead(statusCode, headers);
       response.end();
     }
-  }
-
-  else {
+  // } else if (request.url === '/classes/room1') {
+  //   if (request.method === 'GET') {
+  } else {
     // The outgoing status.
     var statusCode = 404;
 
